@@ -1,0 +1,7 @@
+        .c9/
+        PIL/
+        Pillow-7.0.0.dist-info/
+        cv2/
+        numpy-1.18.1.dist-info/
+        numpy/
+        opencv_python-4.2.0.32.dist-info/
