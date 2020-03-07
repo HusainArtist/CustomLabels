@@ -1,6 +1,7 @@
-cv2
+./cv2
 numpy
 numpy-1.18.1.dist-info
 opencv_python-4.2.0.32.dist-info
 PIL  
 Pillow-7.0.0.dist-info 
+node_modules/
