@@ -16,63 +16,63 @@ def show_custom_labels(model,bucket,photo, min_confidence):
     stream = io.BytesIO(s3_response['Body'].read())
     
     image=Image.open(stream)
-    print(image)
     image.show()
 
     #Call DetectCustomLabels
-    #response = client.detect_custom_labels(Image={'S3Object': {'Bucket': bucket, 'Name': photo}}, MinConfidence=min_confidence, ProjectVersionArn=model)
+    response = client.detect_custom_labels(Image={'S3Object': {'Bucket': bucket, 'Name': photo}}, MinConfidence=min_confidence, ProjectVersionArn=model)
     
+    
+    imgWidth, imgHeight = image.size ### gives the width and height of the image
+    draw = ImageDraw.Draw(image) ### copies the same image
 
+    #calculate and display bounding boxes for each detected custom label
+    print('Detected custom labels for ' + photo)
     
-    #imgWidth, imgHeight = image.size
-    #draw = ImageDraw.Draw(image)
+    
+    ### Defining global variables
+    car_array = []  
+    human_array = []
+    walkway_array = []
+    global_blockage = False
+    
+    
+    
+    for customLabel in response['CustomLabels']:
+        print('Label ' + str(customLabel['Name']))
+        
+        labelname = str(customLabel['Name'])
+        
+        
+        ##Defining colors
+        if str(customLabel['Name']) == "Car":
+            color = '#33cc33'
+        elif str(customLabel['Name']) == "Human":
+            color = '#ff3300'
+        elif str(customLabel['Name']) == "Walkway":
+            color = '#3333ff'
+        else:
+            color = '#33cc33'
+            
+        
+        if 'Geometry' in customLabel:
+            box = customLabel['Geometry']['BoundingBox']
+            left = imgWidth * box['Left']
+            top = imgHeight * box['Top']
+            width = imgWidth * box['Width']
+            height = imgHeight * box['Height']
+            
 
-    # calculate and display bounding boxes for each detected custom label
-    #print('Detected custom labels for ' + photo)
-    #for customLabel in response['CustomLabels']:
-        #print('Label ' + str(customLabel['Name']))
-        #print('Confidence ' + str(customLabel['Confidence']))
-        
-        #labelname = str(customLabel['Name'])
-        
-        
-        ### Defining colors
-        #if str(customLabel['Name']) == "Car":
-            #color = '#33cc33'
-        #elif str(customLabel['Name']) == "Human":
-            #color = '#ff3300'
-        #elif str(customLabel['Name']) == "Walkway":
-            #color = '#3333ff'
-        #else:
-            #color = '#33cc33'
-            
-        
-        #if 'Geometry' in customLabel:
-         #   box = customLabel['Geometry']['BoundingBox']
-         #   left = imgWidth * box['Left']
-          #  top = imgHeight * box['Top']
-           # width = imgWidth * box['Width']
-            #height = imgHeight * box['Height']
-            
-            
-            x = box['left']
-            y = box['Top']
-            width_image = box['Width']
-            height_image = box['Height']
-    
-            
-            
-            
-            
             #fnt = ImageFont.load_default()
             #fnt = ImageFont.truetype('/Library/Fonts/Arial.ttf', 50)
             fnt = ImageFont.truetype('arial.ttf', 50)
             
+            
+            ### This draws bounded boxes on the image
             draw.text((left,top), customLabel['Name'], fill='#00d400', font=fnt)
-            print('Left: ' + '{0:.0f}'.format(left))
-            print('Top: ' + '{0:.0f}'.format(top))
-            print('Face Width: ' + "{0:.0f}".format(width))
-            print('Face Height: ' + "{0:.0f}".format(height))
+            #print('Left: ' + '{0:.0f}'.format(left))
+            #print('Top: ' + '{0:.0f}'.format(top))
+            #print('Face Width: ' + "{0:.0f}".format(width))
+            #print('Face Height: ' + "{0:.0f}".format(height))
             points = (
                 (left,top),
                 (left + width, top),
@@ -82,38 +82,218 @@ def show_custom_labels(model,bucket,photo, min_confidence):
             draw.line(points, fill=color, width=2)
             
             
+            a_plot = {"x": left, "y" : top}
+            b_plot = {"x": left + width, "y" : top}
+            c_plot = {"x": left + width, "y": top + height}
+            d_plot = {"x": left, "y": top + height}
             
-        ##### Husain Code
+            
+            ### Making an object of details obtained from above
+            label_details = {
+                "a_plot" : a_plot,
+                "b_plot" : b_plot,
+                "c_plot" : c_plot,
+                "d_plot" : d_plot,
+                "label" : labelname
+            }
+            
+            if labelname == "Human" or labelname == "Car":
+                label_details = calculate_midpoints(label_details)
+            
+                if labelname == "Human":
+                    human_array.append(label_details)
+                elif labelname == "Car":
+                    car_array.append(label_details)
+                    
+            if labelname == "Walkway":
+                walkway_array.append(label_details)
+            
+
+    corresponding_object = {
+        "walkway_array" : walkway_array,
+        "human_array" : human_array,
+        "car_array" : car_array
+    }
+    
+    response_object = validate_labels(corresponding_object)
+    human_array = response_object["human_array"]
+    car_array = response_object["car_array"]
+            
+    for a_car in car_array:
+        blockage_details = detect_blockage(a_car, human_array)
+
+        if blockage_details["blockage_detected"] == True:
+           global_blockage = True
+           
+       
+       
+    if global_blockage == True:
+        print("Blockage Detected in the given video")
+            
+
+    image.show
+    image.save("geeks.jpg") 
+    return len(response['CustomLabels'])
+
+
+def validate_labels(corresponding_object):
+    walkway_array = corresponding_object["walkway_array"]
+    human_array = corresponding_object["human_array"]
+    car_array = corresponding_object["car_array"]
+    
+    
+    validated_human_array = []
+    validated_car_array = []
+    
+    
+    for a_walkway in walkway_array:
+    
         
-        if labelname == "Human":
-            
-            human_a_plot = {x: x, y : y}
-            human_b_plot = {x: x+ width_image, y : y}
-            human_c_plot = {x: x+ width_image, y: y + height_image}
-            human_d_plot = {x: x, y: y + height_image}
+        assumed_a_plot = {"x": a_walkway["a_plot"]["x"] + 50 , "y" : a_walkway["a_plot"]["y"] + 50}
+        assumed_b_plot = {"x": a_walkway["b_plot"]["x"] + 50 , "y" : a_walkway["b_plot"]["y"] + 50}
+        assumed_c_plot = {"x": a_walkway["c_plot"]["x"] + 50 , "y" : a_walkway["d_plot"]["y"] + 50}
+        assumed_d_plot = {"x": a_walkway["d_plot"]["x"] + 50 , "y" : a_walkway["d_plot"]["y"] + 50}
         
+        for a_human in human_array:
+            
+            corresponding_object = {
+                "assumed_a_plot" : assumed_a_plot,
+                "assumed_b_plot" : assumed_b_plot,
+                "assumed_c_plot" : assumed_c_plot,
+                "assumed_d_plot" : assumed_d_plot,
+                
+                "label_a_plot" : a_human["a_plot"],
+                "label_b_plot" : a_human["a_plot"],
+                "label_c_plot" : a_human["a_plot"],
+                "label_d_plot" : a_human["a_plot"],
+                
+            }
+            
+            status = box_logic_condition(corresponding_object)
+            
+            if status == True:
+                validated_human_array.append(a_human)
+                
+        for a_car in car_array:
+            
+            corresponding_object = {
+                "assumed_a_plot" : assumed_a_plot,
+                "assumed_b_plot" : assumed_b_plot,
+                "assumed_c_plot" : assumed_c_plot,
+                "assumed_d_plot" : assumed_d_plot,
+                
+                "label_a_plot" : a_car["a_plot"],
+                "label_b_plot" : a_car["a_plot"],
+                "label_c_plot" : a_car["a_plot"],
+                "label_d_plot" : a_car["a_plot"],
+                
+            }
+            
+            status = box_logic_condition(corresponding_object)
+            if status == True:
+                validated_car_array.append(a_car)
+                
         
+    response_object = {
+        "car_array" : validated_car_array,
+        "human_array" : validated_human_array
+    }       
         
-        
-        
-        
-        
-        #####
-            
-            
-            
-            
-            
-            
-            
-            
             
             
     
-    #image.show
-    #image.save("geeks.jpg") 
-    #return len(response['CustomLabels'])
+    return response_object
+     
     
+    
+
+def box_logic_condition(corresponding_object):
+    assumed_a_plot = corresponding_object["assumed_a_plot"]
+    assumed_b_plot = corresponding_object["assumed_b_plot"]
+    assumed_c_plot = corresponding_object["assumed_c_plot"]
+    assumed_d_plot = corresponding_object["assumed_d_plot"]
+    
+    label_a_plot = corresponding_object["label_a_plot"]
+    label_b_plot = corresponding_object["label_b_plot"]
+    label_c_plot = corresponding_object["label_c_plot"]
+    label_d_plot = corresponding_object["label_d_plot"]
+    
+    #label_a_plot["x"] = 6
+    #label_a_plot["y"] = 7
+    
+    #assumed_a_plot["x"] = 5
+    #assumed_a_plot["y"] = 6
+    
+    #label_b_plot["x"] = 7
+    #label_b_plot["y"] = 7
+    
+    #assumed_b_plot["x"] = 9
+    #assumed_b_plot["y"] = 6
+    
+    #label_c_plot["x"] = 7
+    #label_c_plot["y"] = 8
+    
+    #assumed_c_plot["x"] = 9
+    #assumed_c_plot["y"] = 10
+    
+    #label_d_plot["x"] = 6 
+    #label_d_plot["y"] = 8 
+    
+    #assumed_d_plot["x"] = 5
+    #assumed_d_plot["y"] = 10
+    
+    if label_a_plot["x"] >= assumed_a_plot["x"] and label_a_plot["y"] >= assumed_a_plot["y"] and label_b_plot["x"] <= assumed_b_plot["x"] and label_b_plot["y"] >= assumed_b_plot["y"] and label_c_plot["x"] <= assumed_c_plot["x"] and label_c_plot["y"] <= assumed_c_plot["y"] and label_d_plot["x"] >= assumed_d_plot["x"] and label_d_plot["y"] <= assumed_d_plot["y"]:
+        return True
+     
+    else:
+        return False
+     
+    
+#### This function calculates coordinate between two coordinates
+def calculate_midpoints(label_details):
+    midpoint_x = (label_details["a_plot"]["x"] + label_details["b_plot"]["x"] / 2)
+    midpoint_y = (label_details["y"] + label_details["d_plot"]["y"] / 2)
+    
+    label_details["center"] = {"x": midpoint_x, "y" : midpoint_y}
+    return label_details
+    
+    
+    
+def detect_blockage(label_details, array):
+    blockage_instance = 0
+    blockage_detected = False
+    
+    for a_array in array:
+        distance = calculate_distane(a_array["center"], label_details["center"])
+        status = detect_distance(distance)
+        
+        if status == True:
+            blockage_instance+=1
+            blockage_detected = True
+
+
+    blockage_details = {
+            "blockage_instance" : blockage_instance,
+            "blockage_detected" : blockage_detected
+    }
+    return blockage_details
+            
+    
+def calculate_distane(p,q):
+    y_diff =  q["y"] - p["y"]
+    x_diff = q["y"] - p["x"]
+    distance = abs(((y_diff)*2 + (x_diff)*2)/2)
+    return distance
+   
+    
+def detect_distance(distance):
+    
+    if distance <= 25:
+        return True
+    else:
+        return False
+    
+        
     
 def main():
     bucket="comparedataset"
