@@ -24,9 +24,12 @@ def show_custom_labels(model,bucket,photo, min_confidence):
     
     imgWidth, imgHeight = image.size ### gives the width and height of the image
     draw = ImageDraw.Draw(image) ### copies the same image
+    
+    
+    print (imgWidth, imgHeight)
 
     #calculate and display bounding boxes for each detected custom label
-    print('Detected custom labels for ' + photo)
+    #('Detected custom labels for ' + photo)
     
     
     ### Defining global variables
@@ -61,14 +64,28 @@ def show_custom_labels(model,bucket,photo, min_confidence):
             width = imgWidth * box['Width']
             height = imgHeight * box['Height']
             
+            
+            
 
             #fnt = ImageFont.load_default()
             #fnt = ImageFont.truetype('/Library/Fonts/Arial.ttf', 50)
-            fnt = ImageFont.truetype('arial.ttf', 50)
+            fnt = ImageFont.truetype('arial.ttf', 12)
             
+            if labelname == "Human":
+                length = len(human_array) + 1
+            elif labelname == "Car":
+                length = len(car_array) + 1
+            elif labelname == "Walkway":
+                length = len(walkway_array) + 1
+            
+            
+            #print (box['Left'], left, length, labelname)
+            #print (box['Top'], top, length, labelname)
+            #print (box['Width'], width, length, labelname)
+            #print (box['Height'], height, length, labelname)
             
             ### This draws bounded boxes on the image
-            draw.text((left,top), customLabel['Name'], fill='#00d400', font=fnt)
+            draw.text((left,top), customLabel['Name'] + " " + str(length), fill='#000000', font=fnt)
             #print('Left: ' + '{0:.0f}'.format(left))
             #print('Top: ' + '{0:.0f}'.format(top))
             #print('Face Width: ' + "{0:.0f}".format(width))
@@ -81,11 +98,16 @@ def show_custom_labels(model,bucket,photo, min_confidence):
                 (left, top))
             draw.line(points, fill=color, width=2)
             
+            y_point = imgHeight - (top + height)
+            a_plot = {"x": left, "y" : y_point}
+            b_plot = {"x": left + width, "y" : y_point}
+            c_plot = {"x": left + width, "y": y_point + height}
+            d_plot = {"x": left, "y": y_point + height}
             
-            a_plot = {"x": left, "y" : top}
-            b_plot = {"x": left + width, "y" : top}
-            c_plot = {"x": left + width, "y": top + height}
-            d_plot = {"x": left, "y": top + height}
+            print (a_plot, length, labelname)
+            print (b_plot, length, labelname)
+            print (c_plot, length, labelname)
+            print (d_plot, height, length, labelname)
             
             
             ### Making an object of details obtained from above
@@ -94,7 +116,8 @@ def show_custom_labels(model,bucket,photo, min_confidence):
                 "b_plot" : b_plot,
                 "c_plot" : c_plot,
                 "d_plot" : d_plot,
-                "label" : labelname
+                "label" : labelname,
+                "length" : length
             }
             
             if labelname == "Human" or labelname == "Car":
@@ -118,15 +141,19 @@ def show_custom_labels(model,bucket,photo, min_confidence):
     response_object = validate_labels(corresponding_object)
     human_array = response_object["human_array"]
     car_array = response_object["car_array"]
+    
+    print (car_array)
             
     for a_car in car_array:
+        
         blockage_details = detect_blockage(a_car, human_array)
 
         if blockage_details["blockage_detected"] == True:
            global_blockage = True
            
        
-       
+      
+    print (global_blockage)
     if global_blockage == True:
         print("Blockage Detected in the given video")
             
@@ -149,10 +176,10 @@ def validate_labels(corresponding_object):
     for a_walkway in walkway_array:
     
         
-        assumed_a_plot = {"x": a_walkway["a_plot"]["x"] + 50 , "y" : a_walkway["a_plot"]["y"] + 50}
-        assumed_b_plot = {"x": a_walkway["b_plot"]["x"] + 50 , "y" : a_walkway["b_plot"]["y"] + 50}
-        assumed_c_plot = {"x": a_walkway["c_plot"]["x"] + 50 , "y" : a_walkway["d_plot"]["y"] + 50}
-        assumed_d_plot = {"x": a_walkway["d_plot"]["x"] + 50 , "y" : a_walkway["d_plot"]["y"] + 50}
+        assumed_a_plot = {"x": a_walkway["a_plot"]["x"] - 150 , "y" : a_walkway["a_plot"]["y"] - 150}
+        assumed_b_plot = {"x": a_walkway["b_plot"]["x"] + 150 , "y" : a_walkway["b_plot"]["y"] - 150}
+        assumed_c_plot = {"x": a_walkway["c_plot"]["x"] + 150 , "y" : a_walkway["d_plot"]["y"] + 150}
+        assumed_d_plot = {"x": a_walkway["d_plot"]["x"] - 150 , "y" : a_walkway["d_plot"]["y"] + 150}
         
         for a_human in human_array:
             
@@ -163,9 +190,9 @@ def validate_labels(corresponding_object):
                 "assumed_d_plot" : assumed_d_plot,
                 
                 "label_a_plot" : a_human["a_plot"],
-                "label_b_plot" : a_human["a_plot"],
-                "label_c_plot" : a_human["a_plot"],
-                "label_d_plot" : a_human["a_plot"],
+                "label_b_plot" : a_human["b_plot"],
+                "label_c_plot" : a_human["c_plot"],
+                "label_d_plot" : a_human["d_plot"],
                 
             }
             
@@ -183,11 +210,22 @@ def validate_labels(corresponding_object):
                 "assumed_d_plot" : assumed_d_plot,
                 
                 "label_a_plot" : a_car["a_plot"],
-                "label_b_plot" : a_car["a_plot"],
-                "label_c_plot" : a_car["a_plot"],
-                "label_d_plot" : a_car["a_plot"],
+                "label_b_plot" : a_car["b_plot"],
+                "label_c_plot" : a_car["c_plot"],
+                "label_d_plot" : a_car["d_plot"],
                 
             }
+            
+            if a_car["length"] == 1:
+                print (assumed_a_plot)
+                print (assumed_b_plot)
+                print (assumed_c_plot)
+                print (assumed_d_plot)
+                
+                print (a_car["a_plot"])
+                print (a_car["b_plot"])
+                print (a_car["c_plot"])
+                print (a_car["d_plot"])
             
             status = box_logic_condition(corresponding_object)
             if status == True:
@@ -252,7 +290,7 @@ def box_logic_condition(corresponding_object):
 #### This function calculates coordinate between two coordinates
 def calculate_midpoints(label_details):
     midpoint_x = (label_details["a_plot"]["x"] + label_details["b_plot"]["x"] / 2)
-    midpoint_y = (label_details["y"] + label_details["d_plot"]["y"] / 2)
+    midpoint_y = (label_details["a_plot"]["y"] + label_details["d_plot"]["y"] / 2)
     
     label_details["center"] = {"x": midpoint_x, "y" : midpoint_y}
     return label_details
@@ -264,8 +302,14 @@ def detect_blockage(label_details, array):
     blockage_detected = False
     
     for a_array in array:
+        
+        
         distance = calculate_distane(a_array["center"], label_details["center"])
+        print (a_array["label"], a_array["length"])
+        if ((a_array["label"] == "Human" and a_array["length"] == 22) and (label_details["label"] == "Car" and label_details["length"] == 3)):
+            print (distance, "distance")
         status = detect_distance(distance)
+        
         
         if status == True:
             blockage_instance+=1
@@ -281,14 +325,14 @@ def detect_blockage(label_details, array):
     
 def calculate_distane(p,q):
     y_diff =  q["y"] - p["y"]
-    x_diff = q["y"] - p["x"]
+    x_diff = q["x"] - p["x"]
     distance = abs(((y_diff)*2 + (x_diff)*2)/2)
     return distance
    
     
 def detect_distance(distance):
     
-    if distance <= 25:
+    if distance <= 50:
         return True
     else:
         return False
@@ -297,8 +341,8 @@ def detect_distance(distance):
     
 def main():
     bucket="comparedataset"
-    photo="frame22.jpg"
-    model='arn:aws:rekognition:us-east-1:821691753366:project/TechSquadDemo/version/TechSquadDemo.2020-03-05T06.47.44/1583408864257'
+    photo="frame2.jpg"
+    model='arn:aws:rekognition:us-east-1:332403273915:project/Capstone_Training_model/version/Capstone_Training_model.2020-03-11T21.58.27/1583978307349'
     min_confidence=50
     
     label_count=show_custom_labels(model,bucket,photo, min_confidence)
