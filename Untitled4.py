@@ -81,19 +81,8 @@ def main():
 if __name__ == "__main__":
     #main()
     
-
-    #now = datetime.datetime.now()
-    #print (str(now.isoformat()))
     pst = pytz.timezone('Canada/Eastern')
-    print(datetime.now(pst).strftime("%Y%m%d%H%M%S"))
-    
-    #os.makedirs("demo")
-    #path = "demo/husain1/"
-    #os.makedirs(path)
     bucket = "capstone-training"
-    #for key in bucket.list(prefix='bucket'):
-        #key.delete()
-        
     f = open("text_file_name.txt", "w")     
     statement = "Blockage scenario detected in instances.\n"
     f.write(statement)
