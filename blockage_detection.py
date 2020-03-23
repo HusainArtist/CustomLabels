@@ -95,15 +95,18 @@ def show_custom_labels(corresponding_object):
     dataset_file_name = corresponding_object["dataset_file_name"]
     path_image = corresponding_object["path_image"]
     frame_name = corresponding_object["frame_name"]
+    image = corresponding_object["image_object"]
 
     client=boto3.client('rekognition')
     # Load image from S3 bucket
-    s3_connection = boto3.resource('s3')
-    s3_object = s3_connection.Object(bucket,photo)
-    s3_response = s3_object.get()
-    stream = io.BytesIO(s3_response['Body'].read())
+    #s3_connection = boto3.resource('s3')
+    #s3_object = s3_connection.Object(bucket,photo)
+    #s3_response = s3_object.get()
+    #stream = io.BytesIO(s3_response['Body'].read())
     
-    image=Image.open(stream)
+    #image=Image.open(stream)
+    
+    
     image.show()
 
     #Call DetectCustomLabels
@@ -442,15 +445,18 @@ def main():
         for a_frame in frame_images_dir:
             with open("./frame_images/" + a_frame , "rb") as f:
                 s3.upload_fileobj(f, bucket, a_dataset_file +"/frame_images/" + a_frame)
-                
+     
         for a_frame in frame_images_dir:
+            path = './frame_images/'
+            image_object = Image.open(os.path.join(path,a_frame))
                 
             corresponding_object = {
                 "photo" : a_dataset_file +"/frame_images/" + a_frame, 
                 "min_confidence" : min_confidence,
                 "dataset_file_name" : a_dataset_file,
                 "path_image" : path_image,
-                "frame_name" : a_frame
+                "frame_name" : a_frame,
+                "image_object" : image_object,
             }
     
             response_object =show_custom_labels(corresponding_object)
