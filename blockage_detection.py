@@ -219,7 +219,7 @@ def show_custom_labels(corresponding_object):
            
        
       
-    print (global_blockage)
+    #print (global_blockage)
     if global_blockage == True:
         image.save(path_image+"/"+frame_name) 
             
@@ -447,6 +447,8 @@ def main():
                 s3.upload_fileobj(f, bucket, a_dataset_file +"/frame_images/" + a_frame)
      
         for a_frame in frame_images_dir:
+            print ("Processing frame " + a_frame)
+            
             path = './frame_images/'
             image_object = Image.open(os.path.join(path,a_frame))
                 
@@ -473,6 +475,9 @@ def main():
 
         else: 
             statement = "No Blockage scenario detected in " +a_dataset_file+ ".\n"
+            
+        print("Total frames detected for " +a_dataset_file+ " video : " + str(len(frame_images_dir)))
+        print(statement)
         text_array.append(statement)
         
         
